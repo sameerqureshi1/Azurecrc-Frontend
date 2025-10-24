@@ -1,4 +1,4 @@
-name: Create Azure Storage (sameercv)
+name: Create Azure Storage (sameerresume)
 
 on:
   workflow_dispatch:
@@ -25,24 +25,27 @@ jobs:
             --name "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --location "${{ secrets.AZURE_LOCATION }}"
 
-      - name: Create Storage Account if not exists
+      - name: Validate names
         run: |
-          STORAGE_NAME="${{ secrets.STORAGE_ACCOUNT_NAME }}"
-          RG="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          LOCATION="${{ secrets.AZURE_LOCATION }}"
-
-          if az storage account check-name --name "$STORAGE_NAME" --query "nameAvailable" -o tsv | grep -q true; then
-            echo "Creating storage account $STORAGE_NAME..."
-            az storage account create \
-              --name "$STORAGE_NAME" \
-              --resource-group "$RG" \
-              --location "$LOCATION" \
-              --sku Standard_LRS \
-              --kind StorageV2 \
-              --access-tier Hot
-          else
-            echo "Storage account $STORAGE_NAME already exists or name unavailable."
+          STORAGE="${{ secrets.STORAGE_ACCOUNT_NAME }}"
+          CONTAINER="${{ secrets.CONTAINER_NAME }}"
+          if [ ${#STORAGE} -lt 3 ] || [ ${#STORAGE} -gt 24 ]; then
+            echo "❌ Storage account name length invalid (3–24 chars required)"
+            exit 1
           fi
+          if [ ${#CONTAINER} -lt 3 ] || [ ${#CONTAINER} -gt 63 ]; then
+            echo "❌ Container name length invalid (3–63 chars required)"
+            exit 1
+          fi
+
+      - name: Create Storage Account
+        run: |
+          az storage account create \
+            --name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --location "${{ secrets.AZURE_LOCATION }}" \
+            --sku Standard_LRS \
+            --kind StorageV2
 
       - name: Get Storage Account Key
         id: key
@@ -51,7 +54,6 @@ jobs:
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --query "[0].value" -o tsv)
-          echo "::add-mask::$KEY"
           echo "key=$KEY" >> $GITHUB_OUTPUT
 
       - name: Create Blob Container
@@ -61,10 +63,3 @@ jobs:
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
             --account-key "${{ steps.key.outputs.key }}" \
             --public-access off
-
-      - name: Show Storage Details
-        run: |
-          az storage account show \
-            --name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --output table
