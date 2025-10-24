@@ -14,28 +14,16 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Create Resource Group
-        run: |
-          az group create \
-            --name sameer-rg \
-            --location eastus
+        run: az group create --name sameer-rg --location eastus
 
       - name: Create Storage Account
+        run: az storage account create --name sameercv --resource-group sameer-rg --location eastus --sku Standard_LRS --kind StorageV2
+
+      - name: Get Storage Account Key
+        id: getkey
         run: |
-          az storage account create \
-            --name sameercv \
-            --resource-group sameer-rg \
-            --location eastus \
-            --sku Standard_LRS \
-            --kind StorageV2
+          key=$(az storage account keys list --account-name sameercv --resource-group sameer-rg --query "[0].value" -o tsv)
+          echo "ACCOUNT_KEY=$key" >> $GITHUB_ENV
 
       - name: Create Blob Container
-        run: |
-          ACCOUNT_KEY=$(az storage account keys list \
-            --account-name sameercv \
-            --resource-group sameer-rg \
-            --query "[0].value" -o tsv)
-          az storage container create \
-            --name cvcontainer \
-            --account-name sameercv \
-            --account-key $ACCOUNT_KEY \
-            --public-access off
+        run: az storage container create --name cvcontainer --account-name sameercv --account-key $ACCOUNT_KEY --public-access off
