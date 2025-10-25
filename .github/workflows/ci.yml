@@ -56,10 +56,26 @@ jobs:
             --query "[0].value" -o tsv)
           echo "key=$KEY" >> $GITHUB_OUTPUT
 
-      - name: Create Blob Container
+      - name: Enable Static Website Hosting
         run: |
-          az storage container create \
-            --name "${{ secrets.CONTAINER_NAME }}" \
+          az storage blob service-properties update \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
             --account-key "${{ steps.key.outputs.key }}" \
-            --public-access off
+            --static-website \
+            --index-document index.html \
+            --404-document index.html
+
+      - name: Upload Website Files
+        run: |
+          az storage blob upload-batch \
+            -s "./" \
+            -d '$web' \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-key "${{ steps.key.outputs.key }}"
+
+      - name: Show Website URL
+        run: |
+          URL=$(az storage account show \
+            --name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --query "primaryEndpoints.web" -o tsv)
+          echo "🌐 Website URL: $URL"
