@@ -1,4 +1,4 @@
-name: Create Azure Storage (sameercv123)
+name: Create Azure Storage (sameercv)
 
 on:
   workflow_dispatch:
@@ -28,13 +28,8 @@ jobs:
       - name: Validate names
         run: |
           STORAGE="${{ secrets.STORAGE_ACCOUNT_NAME }}"
-          CONTAINER="${{ secrets.CONTAINER_NAME }}"
           if [ ${#STORAGE} -lt 3 ] || [ ${#STORAGE} -gt 24 ]; then
             echo "❌ Storage account name length invalid (3–24 chars required)"
-            exit 1
-          fi
-          if [ ${#CONTAINER} -lt 3 ] || [ ${#CONTAINER} -gt 63 ]; then
-            echo "❌ Container name length invalid (3–63 chars required)"
             exit 1
           fi
 
@@ -65,11 +60,12 @@ jobs:
             --index-document index.html \
             --404-document index.html
 
-      - name: Upload Website Files
+      - name: Upload only index.html
         run: |
-          az storage blob upload-batch \
-            -s "./" \
-            -d '$web' \
+          az storage blob upload \
+            --file "index.html" \
+            --container-name '$web' \
+            --name "index.html" \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
             --account-key "${{ steps.key.outputs.key }}"
 
